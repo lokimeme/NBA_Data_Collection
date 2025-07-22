@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBAlytics Dashboard</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Plotly.js for charting -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom styles to complement Tailwind */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark gray background */
+            color: #e5e7eb; /* Light gray text */
+        }
+        .card {
+            background-color: #1f2937; /* Lighter gray for cards */
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .plot-container .svg-container {
+            border-radius: 0.5rem;
+        }
+        .control-panel {
+            background-color: #374151;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        select, button {
+            background-color: #4b5563;
+            color: #e5e7eb;
+            border: 1px solid #6b7280;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+        .stat-box {
+            background-color: #374151;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #34d399; /* Green for positive stats */
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header -->
+    <header class="bg-gray-900 shadow-lg">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-bold tracking-tight text-white">NBAlytics Dashboard</h1>
+            <p class="mt-1 text-gray-400">Visualizing the Data Revolution in Basketball</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Module 1: Shot Selection Analysis -->
+                <div class="card lg:col-span-3">
+                    <h2 class="text-xl font-semibold mb-4 text-white">The "Moreyball" Effect: Shot Selection Evolution</h2>
+                    <p class="text-gray-400 mb-4">This chart shows the league-wide shift in shot selection since the early 2000s. Notice the dramatic rise in three-point attempts and the corresponding decline in mid-range shots.</p>
+                    <div id="shotSelectionChart" class="plot-container"></div>
+                </div>
+
+                <!-- Module 2: Pace & Space Timeline -->
+                <div class="card lg:col-span-3">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Pace & Space Timeline</h2>
+                    <p class="text-gray-400 mb-4">This chart tracks two key metrics: Pace (possessions per 48 minutes) and Offensive Rating (points per 100 possessions). It visualizes how the game has gotten faster and more efficient over time.</p>
+                    <div id="paceSpaceChart" class="plot-container"></div>
+                </div>
+
+                <!-- Module 3: Player Valuation Analyzer -->
+                <div class="card lg:col-span-3">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Player Valuation Analyzer</h2>
+                    <p class="text-gray-400 mb-4">How has player valuation changed? This tool correlates player salaries with different stats across eras. Select a season and a statistic to see how well it predicted salary.</p>
+                    
+                    <div class="control-panel grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label for="seasonSelect" class="block text-sm font-medium text-gray-300">Select Season:</label>
+                            <select id="seasonSelect" class="mt-1 block w-full">
+                                <option value="2004">2003-04</option>
+                                <option value="2023" selected>2022-23</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="statSelect" class="block text-sm font-medium text-gray-300">Select Statistic:</label>
+                            <select id="statSelect" class="mt-1 block w-full">
+                                <option value="ppg">Points Per Game (PPG)</option>
+                                <option value="vorp" selected>Value Over Replacement (VORP)</option>
+                            </select>
+                        </div>
+                        <div class="stat-box">
+                             <div id="correlationValue" class="stat-value"></div>
+                             <div class="stat-label">Correlation (R²)</div>
+                        </div>
+                    </div>
+                    
+                    <div id="valuationChart" class="plot-container mt-4"></div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 mt-8">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 text-center text-gray-500">
+            <p>NBAlytics Dashboard | A Project by Gemini</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- DATA ---
+        // In a real application, this would be fetched from a server/API.
+        // Here, it's embedded for demonstration purposes.
+
+        const leagueAveragesData = {
+            seasons: ['2004', '2006', '2008', '2010', '2012', '2014', '2016', '2018', '2020', '2022', '2024'],
+            threePAr: [0.158, 0.180, 0.200, 0.222, 0.241, 0.268, 0.285, 0.359, 0.392, 0.401, 0.415], // 3-Point Attempt Rate
+            midRangeAr: [0.321, 0.295, 0.280, 0.265, 0.250, 0.221, 0.183, 0.151, 0.130, 0.121, 0.115], // Mid-Range Attempt Rate
+            atRimAr: [0.300, 0.315, 0.320, 0.310, 0.315, 0.330, 0.345, 0.355, 0.360, 0.358, 0.350], // At-Rim Attempt Rate
+            pace: [90.1, 90.5, 91.7, 92.1, 91.3, 93.9, 95.8, 100.0, 99.2, 98.2, 100.2],
+            oRtg: [102.9, 106.2, 107.5, 107.3, 104.6, 106.7, 108.8, 110.4, 112.3, 114.2, 115.3]
+        };
+
+        const playerData = {
+            '2004': [
+                { player: 'Kevin Garnett', salary: 28.0, ppg: 24.2, vorp: 9.8 },
+                { player: 'Kobe Bryant', salary: 14.1, ppg: 24.0, vorp: 6.5 },
+                { player: 'Tim Duncan', salary: 14.6, ppg: 22.3, vorp: 8.1 },
+                { player: 'Shaquille O\'Neal', salary: 24.7, ppg: 21.5, vorp: 5.3 },
+                { player: 'Tracy McGrady', salary: 13.2, ppg: 28.0, vorp: 7.9 },
+                { player: 'Jermaine O\'Neal', salary: 13.7, ppg: 20.1, vorp: 4.8 },
+                { player: 'Dirk Nowitzki', salary: 13.0, ppg: 21.8, vorp: 6.2 },
+                { player: 'Carmelo Anthony', salary: 3.2, ppg: 21.0, vorp: 1.5 },
+                { player: 'LeBron James', salary: 4.3, ppg: 20.9, vorp: 4.1 },
+                { player: 'Allen Iverson', salary: 13.5, ppg: 26.4, vorp: 5.6 }
+            ],
+            '2023': [
+                { player: 'Nikola Jokic', salary: 33.6, ppg: 24.5, vorp: 8.8 },
+                { player: 'Luka Doncic', salary: 37.1, ppg: 32.4, vorp: 7.5 },
+                { player: 'Joel Embiid', salary: 33.6, ppg: 33.1, vorp: 6.7 },
+                { player: 'Shai Gilgeous-Alexander', salary: 30.9, ppg: 31.4, vorp: 6.6 },
+                { player: 'Jayson Tatum', salary: 30.3, ppg: 30.1, vorp: 6.1 },
+                { player: 'Stephen Curry', salary: 48.0, ppg: 29.4, vorp: 4.9 },
+                { player: 'Damian Lillard', salary: 42.4, ppg: 32.2, vorp: 6.1 },
+                { player: 'Kevin Durant', salary: 42.9, ppg: 29.1, vorp: 4.2 },
+                { player: 'LeBron James', salary: 44.4, ppg: 28.9, vorp: 4.0 },
+                { player: 'Giannis Antetokounmpo', salary: 42.4, ppg: 31.1, vorp: 5.4 }
+            ]
+        };
+        
+        // --- PLOTTING LOGIC ---
+
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // Common layout for all charts
+            const plotLayout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                xaxis: { gridcolor: '#374151' },
+                yaxis: { gridcolor: '#374151' },
+                legend: {
+                    orientation: 'h',
+                    yanchor: 'bottom',
+                    y: 1.02,
+                    xanchor: 'right',
+                    x: 1
+                }
+            };
+
+            // 1. Shot Selection Chart
+            const trace1 = {
+                x: leagueAveragesData.seasons,
+                y: leagueAveragesData.threePAr.map(v => v * 100),
+                name: '3-Point Attempt %',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#34d399', width: 3 }
+            };
+            const trace2 = {
+                x: leagueAveragesData.seasons,
+                y: leagueAveragesData.midRangeAr.map(v => v * 100),
+                name: 'Mid-Range Attempt %',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#f87171', width: 3 }
+            };
+            const trace3 = {
+                x: leagueAveragesData.seasons,
+                y: leagueAveragesData.atRimAr.map(v => v * 100),
+                name: 'At-Rim Attempt %',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#60a5fa', width: 3 }
+            };
+            const shotSelectionLayout = { ...plotLayout, yaxis: { title: 'Attempt Rate (%)' }};
+            Plotly.newPlot('shotSelectionChart', [trace1, trace2, trace3], shotSelectionLayout, {responsive: true});
+
+            // 2. Pace & Space Chart
+            const paceTrace = {
+                x: leagueAveragesData.seasons,
+                y: leagueAveragesData.pace,
+                name: 'Pace',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#facc15', width: 3 }
+            };
+            const oRtgTrace = {
+                x: leagueAveragesData.seasons,
+                y: leagueAveragesData.oRtg,
+                name: 'Offensive Rating',
+                type: 'scatter',
+                mode: 'lines+markers',
+                yaxis: 'y2',
+                line: { color: '#c084fc', width: 3 }
+            };
+            const paceSpaceLayout = {
+                ...plotLayout,
+                yaxis: { title: 'Pace (Poss. per 48m)', titlefont: {color: '#facc15'}, tickfont: {color: '#facc15'} },
+                yaxis2: {
+                    title: 'Offensive Rating',
+                    titlefont: {color: '#c084fc'},
+                    tickfont: {color: '#c084fc'},
+                    overlaying: 'y',
+                    side: 'right'
+                }
+            };
+            Plotly.newPlot('paceSpaceChart', [paceTrace, oRtgTrace], paceSpaceLayout, {responsive: true});
+
+            // 3. Player Valuation Chart
+            const seasonSelect = document.getElementById('seasonSelect');
+            const statSelect = document.getElementById('statSelect');
+            const correlationValueEl = document.getElementById('correlationValue');
+
+            function calculateCorrelation(data, xVar, yVar) {
+                const n = data.length;
+                const sumX = data.reduce((acc, val) => acc + val[xVar], 0);
+                const sumY = data.reduce((acc, val) => acc + val[yVar], 0);
+                const sumXY = data.reduce((acc, val) => acc + val[xVar] * val[yVar], 0);
+                const sumX2 = data.reduce((acc, val) => acc + val[xVar] * val[xVar], 0);
+                const sumY2 = data.reduce((acc, val) => acc + val[yVar] * val[yVar], 0);
+
+                const numerator = n * sumXY - sumX * sumY;
+                const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+                if (denominator === 0) return 0;
+                
+                const r = numerator / denominator;
+                return r * r; // Return R-squared
+            }
+
+            function updateValuationChart() {
+                const season = seasonSelect.value;
+                const stat = statSelect.value;
+                const currentData = playerData[season];
+                
+                const xData = currentData.map(p => p[stat]);
+                const yData = currentData.map(p => p.salary);
+                const textData = currentData.map(p => p.player);
+
+                const trace = {
+                    x: xData,
+                    y: yData,
+                    text: textData,
+                    mode: 'markers+text',
+                    type: 'scatter',
+                    textposition: 'top center',
+                    marker: { size: 12, color: '#34d399' }
+                };
+                
+                const statName = stat.toUpperCase();
+                const valuationLayout = {
+                    ...plotLayout,
+                    xaxis: { title: `${statName}` },
+                    yaxis: { title: 'Salary (in Millions USD)' },
+                    showlegend: false
+                };
+
+                Plotly.newPlot('valuationChart', [trace], valuationLayout, {responsive: true});
+                
+                const r2 = calculateCorrelation(currentData, stat, 'salary');
+                correlationValueEl.textContent = r2.toFixed(3);
+            }
+
+            seasonSelect.addEventListener('change', updateValuationChart);
+            statSelect.addEventListener('change', updateValuationChart);
+
+            // Initial chart render
+            updateValuationChart();
+        });
+    </script>
+</body>
+</html>
