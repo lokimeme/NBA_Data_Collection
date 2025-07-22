@@ -259,7 +259,7 @@
             };
             Plotly.newPlot('paceSpaceChart', [paceTrace, oRtgTrace], paceSpaceLayout, {responsive: true});
 
-            // 4. Salary vs. Shot Distance Chart (with Toggle)
+            // 4. Salary vs. Shot Distance Chart
             const toggleButtons = document.querySelectorAll('.toggle-btn');
             
             function updateSalaryVsDistanceChart(season) {
@@ -275,7 +275,7 @@
                 };
 
                 const yAxisTitle = season === '2004' 
-                    ? 'Salary (in Millions USD, adjusted for inflation)' 
+                    ? 'Salary (in Millions USD, adjusted for inflation as of 2025)' 
                     : 'Salary (in Millions USD)';
 
                 const layout = {
@@ -290,17 +290,14 @@
 
             toggleButtons.forEach(button => {
                 button.addEventListener('click', () => {
-                    // Update active class
                     toggleButtons.forEach(btn => btn.classList.remove('active'));
                     button.classList.add('active');
                     
-                    // Redraw chart
                     const season = button.dataset.season;
                     updateSalaryVsDistanceChart(season);
                 });
             });
 
-            // Initial chart render
             updateSalaryVsDistanceChart('2023');
         });
     </script>
