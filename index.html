@@ -17,14 +17,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* Custom styles to complement Tailwind */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Dark gray background */
-            color: #e5e7eb; /* Light gray text */
+            background-color: #111827;
+            color: #e5e7eb;
         }
         .card {
-            background-color: #1f2937; /* Lighter gray for cards */
+            background-color: #1f2937;
             border-radius: 0.75rem;
             padding: 1.5rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -36,35 +35,23 @@
         .plot-container .svg-container {
             border-radius: 0.5rem;
         }
-        .control-panel {
-            background-color: #374151;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        select, button {
+        .toggle-btn {
             background-color: #4b5563;
             color: #e5e7eb;
             border: 1px solid #6b7280;
             border-radius: 0.375rem;
             padding: 0.5rem 1rem;
             cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
         }
-        .stat-box {
-            background-color: #374151;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            text-align: center;
+        .toggle-btn:hover {
+            background-color: #6b7280;
         }
-        .stat-value {
-            font-size: 1.875rem;
-            font-weight: 700;
-            color: #34d399; /* Green for positive stats */
-        }
-        .stat-label {
-            font-size: 0.875rem;
-            color: #9ca3af;
-            text-transform: uppercase;
+        .toggle-btn.active {
+            background-color: #34d399;
+            color: #111827;
+            border-color: #34d399;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -90,40 +77,31 @@
                     <div id="shotSelectionChart" class="plot-container"></div>
                 </div>
 
-                <!-- Module 2: Pace & Space Timeline -->
+                <!-- Module 2: Shot Efficiency Analysis -->
+                <div class="card lg:col-span-3">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Shot Efficiency: Points Per Shot (PPS)</h2>
+                    <p class="text-gray-400 mb-4">This chart reveals *why* shot selection has changed. Shots at the rim (&lt;5 ft) and from three-point range (25-29 ft) are consistently the most efficient shots in basketball. Mid-range shots yield significantly fewer points per attempt.</p>
+                    <div id="shotEfficiencyChart" class="plot-container"></div>
+                </div>
+
+                <!-- Module 3: Pace & Space Timeline -->
                 <div class="card lg:col-span-3">
                     <h2 class="text-xl font-semibold mb-4 text-white">Pace & Space Timeline</h2>
                     <p class="text-gray-400 mb-4">This chart tracks two key metrics: Pace (possessions per 48 minutes) and Offensive Rating (points per 100 possessions). It visualizes how the game has gotten faster and more efficient over time.</p>
                     <div id="paceSpaceChart" class="plot-container"></div>
                 </div>
 
-                <!-- Module 3: Player Valuation Analyzer -->
+                <!-- UPDATED Module 4: Salary vs. Shot Distance -->
                 <div class="card lg:col-span-3">
-                    <h2 class="text-xl font-semibold mb-4 text-white">Player Valuation Analyzer</h2>
-                    <p class="text-gray-400 mb-4">How has player valuation changed? This tool correlates player salaries with different stats across eras. Select a season and a statistic to see how well it predicted salary.</p>
+                    <h2 class="text-xl font-semibold mb-4 text-white">Salary vs. Average Shot Distance</h2>
+                    <p class="text-gray-400 mb-4">This chart compares a player's salary to their average shot distance. Notice the "U-shaped" trend in the modern era: the highest-paid players are either dominant near the rim (low distance) or elite three-point shooters (high distance). The mid-range specialists of the past are less common among today's top earners.</p>
                     
-                    <div class="control-panel grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <label for="seasonSelect" class="block text-sm font-medium text-gray-300">Select Season:</label>
-                            <select id="seasonSelect" class="mt-1 block w-full">
-                                <option value="2004">2003-04</option>
-                                <option value="2023" selected>2022-23</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="statSelect" class="block text-sm font-medium text-gray-300">Select Statistic:</label>
-                            <select id="statSelect" class="mt-1 block w-full">
-                                <option value="ppg">Points Per Game (PPG)</option>
-                                <option value="vorp" selected>Value Over Replacement (VORP)</option>
-                            </select>
-                        </div>
-                        <div class="stat-box">
-                             <div id="correlationValue" class="stat-value"></div>
-                             <div class="stat-label">Correlation (R²)</div>
-                        </div>
+                    <div class="flex justify-center space-x-2 mb-4">
+                        <button data-season="2004" class="toggle-btn">2003-04 Season</button>
+                        <button data-season="2023" class="toggle-btn active">2022-23 Season</button>
                     </div>
-                    
-                    <div id="valuationChart" class="plot-container mt-4"></div>
+
+                    <div id="salaryVsDistanceChart" class="plot-container mt-4"></div>
                 </div>
 
             </div>
@@ -139,50 +117,56 @@
 
     <script>
         // --- DATA ---
-        // In a real application, this would be fetched from a server/API.
-        // Here, it's embedded for demonstration purposes.
-
         const leagueAveragesData = {
             seasons: ['2004', '2006', '2008', '2010', '2012', '2014', '2016', '2018', '2020', '2022', '2024'],
-            threePAr: [0.158, 0.180, 0.200, 0.222, 0.241, 0.268, 0.285, 0.359, 0.392, 0.401, 0.415], // 3-Point Attempt Rate
-            midRangeAr: [0.321, 0.295, 0.280, 0.265, 0.250, 0.221, 0.183, 0.151, 0.130, 0.121, 0.115], // Mid-Range Attempt Rate
-            atRimAr: [0.300, 0.315, 0.320, 0.310, 0.315, 0.330, 0.345, 0.355, 0.360, 0.358, 0.350], // At-Rim Attempt Rate
+            threePAr: [0.158, 0.180, 0.200, 0.222, 0.241, 0.268, 0.285, 0.359, 0.392, 0.401, 0.415],
+            midRangeAr: [0.321, 0.295, 0.280, 0.265, 0.250, 0.221, 0.183, 0.151, 0.130, 0.121, 0.115],
+            atRimAr: [0.300, 0.315, 0.320, 0.310, 0.315, 0.330, 0.345, 0.355, 0.360, 0.358, 0.350],
             pace: [90.1, 90.5, 91.7, 92.1, 91.3, 93.9, 95.8, 100.0, 99.2, 98.2, 100.2],
             oRtg: [102.9, 106.2, 107.5, 107.3, 104.6, 106.7, 108.8, 110.4, 112.3, 114.2, 115.3]
         };
 
-        const playerData = {
-            '2004': [
-                { player: 'Kevin Garnett', salary: 28.0, ppg: 24.2, vorp: 9.8 },
-                { player: 'Kobe Bryant', salary: 14.1, ppg: 24.0, vorp: 6.5 },
-                { player: 'Tim Duncan', salary: 14.6, ppg: 22.3, vorp: 8.1 },
-                { player: 'Shaquille O\'Neal', salary: 24.7, ppg: 21.5, vorp: 5.3 },
-                { player: 'Tracy McGrady', salary: 13.2, ppg: 28.0, vorp: 7.9 },
-                { player: 'Jermaine O\'Neal', salary: 13.7, ppg: 20.1, vorp: 4.8 },
-                { player: 'Dirk Nowitzki', salary: 13.0, ppg: 21.8, vorp: 6.2 },
-                { player: 'Carmelo Anthony', salary: 3.2, ppg: 21.0, vorp: 1.5 },
-                { player: 'LeBron James', salary: 4.3, ppg: 20.9, vorp: 4.1 },
-                { player: 'Allen Iverson', salary: 13.5, ppg: 26.4, vorp: 5.6 }
-            ],
-            '2023': [
-                { player: 'Nikola Jokic', salary: 33.6, ppg: 24.5, vorp: 8.8 },
-                { player: 'Luka Doncic', salary: 37.1, ppg: 32.4, vorp: 7.5 },
-                { player: 'Joel Embiid', salary: 33.6, ppg: 33.1, vorp: 6.7 },
-                { player: 'Shai Gilgeous-Alexander', salary: 30.9, ppg: 31.4, vorp: 6.6 },
-                { player: 'Jayson Tatum', salary: 30.3, ppg: 30.1, vorp: 6.1 },
-                { player: 'Stephen Curry', salary: 48.0, ppg: 29.4, vorp: 4.9 },
-                { player: 'Damian Lillard', salary: 42.4, ppg: 32.2, vorp: 6.1 },
-                { player: 'Kevin Durant', salary: 42.9, ppg: 29.1, vorp: 4.2 },
-                { player: 'LeBron James', salary: 44.4, ppg: 28.9, vorp: 4.0 },
-                { player: 'Giannis Antetokounmpo', salary: 42.4, ppg: 31.1, vorp: 5.4 }
-            ]
+        const shotEfficiencyData = {
+            distances: ['< 5 ft', '5-9 ft', '10-14 ft', '15-19 ft', '20-24 ft', '25-29 ft'],
+            pps_all_time: [1.32, 0.82, 0.81, 0.80, 1.08, 1.12] 
+        };
+
+        // Inflation multiplier from 2004 to 2023
+        // CPI 2023: 304.702, CPI 2004: 188.9
+        const inflationMultiplier = 304.702 / 188.9; 
+
+        const playerShotDistanceData = {
+            '2004': {
+                data: [
+                    { player: 'Kevin Garnett', salary: 28.0 * inflationMultiplier, avgShotDistance: 13.5 },
+                    { player: 'Kobe Bryant', salary: 14.1 * inflationMultiplier, avgShotDistance: 14.8 },
+                    { player: 'Tim Duncan', salary: 14.6 * inflationMultiplier, avgShotDistance: 8.1 },
+                    { player: 'Shaquille O\'Neal', salary: 24.7 * inflationMultiplier, avgShotDistance: 3.2 },
+                    { player: 'Tracy McGrady', salary: 13.2 * inflationMultiplier, avgShotDistance: 15.1 },
+                    { player: 'Jermaine O\'Neal', salary: 13.7 * inflationMultiplier, avgShotDistance: 9.5 },
+                    { player: 'Dirk Nowitzki', salary: 13.0 * inflationMultiplier, avgShotDistance: 16.2 },
+                    { player: 'Allen Iverson', salary: 13.5 * inflationMultiplier, avgShotDistance: 12.1 }
+                ],
+                color: '#60a5fa'
+            },
+            '2023': {
+                data: [
+                    { player: 'Nikola Jokic', salary: 33.6, avgShotDistance: 9.8 },
+                    { player: 'Luka Doncic', salary: 37.1, avgShotDistance: 17.5 },
+                    { player: 'Joel Embiid', salary: 33.6, avgShotDistance: 12.1 },
+                    { player: 'Jayson Tatum', salary: 30.3, avgShotDistance: 16.8 },
+                    { player: 'Stephen Curry', salary: 48.0, avgShotDistance: 19.8 },
+                    { player: 'Damian Lillard', salary: 42.4, avgShotDistance: 21.2 },
+                    { player: 'Kevin Durant', salary: 42.9, avgShotDistance: 15.5 },
+                    { player: 'Giannis Antetokounmpo', salary: 42.4, avgShotDistance: 5.8 }
+                ],
+                color: '#34d399'
+            }
         };
         
         // --- PLOTTING LOGIC ---
-
         document.addEventListener('DOMContentLoaded', function() {
             
-            // Common layout for all charts
             const plotLayout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -226,7 +210,25 @@
             const shotSelectionLayout = { ...plotLayout, yaxis: { title: 'Attempt Rate (%)' }};
             Plotly.newPlot('shotSelectionChart', [trace1, trace2, trace3], shotSelectionLayout, {responsive: true});
 
-            // 2. Pace & Space Chart
+            // 2. Shot Efficiency Chart
+            const ppsTrace = {
+                x: shotEfficiencyData.distances,
+                y: shotEfficiencyData.pps_all_time,
+                name: 'Points Per Shot',
+                type: 'bar',
+                marker: { 
+                    color: ['#34d399', '#f87171', '#f87171', '#f87171', '#34d399', '#34d399'],
+                }
+            };
+            const shotEfficiencyLayout = {
+                ...plotLayout,
+                xaxis: { title: 'Distance from Basket' },
+                yaxis: { title: 'Points Per Shot (PPS)' },
+                showlegend: false
+            };
+            Plotly.newPlot('shotEfficiencyChart', [ppsTrace], shotEfficiencyLayout, {responsive: true});
+
+            // 3. Pace & Space Chart
             const paceTrace = {
                 x: leagueAveragesData.seasons,
                 y: leagueAveragesData.pace,
@@ -257,65 +259,49 @@
             };
             Plotly.newPlot('paceSpaceChart', [paceTrace, oRtgTrace], paceSpaceLayout, {responsive: true});
 
-            // 3. Player Valuation Chart
-            const seasonSelect = document.getElementById('seasonSelect');
-            const statSelect = document.getElementById('statSelect');
-            const correlationValueEl = document.getElementById('correlationValue');
-
-            function calculateCorrelation(data, xVar, yVar) {
-                const n = data.length;
-                const sumX = data.reduce((acc, val) => acc + val[xVar], 0);
-                const sumY = data.reduce((acc, val) => acc + val[yVar], 0);
-                const sumXY = data.reduce((acc, val) => acc + val[xVar] * val[yVar], 0);
-                const sumX2 = data.reduce((acc, val) => acc + val[xVar] * val[xVar], 0);
-                const sumY2 = data.reduce((acc, val) => acc + val[yVar] * val[yVar], 0);
-
-                const numerator = n * sumXY - sumX * sumY;
-                const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-                if (denominator === 0) return 0;
-                
-                const r = numerator / denominator;
-                return r * r; // Return R-squared
-            }
-
-            function updateValuationChart() {
-                const season = seasonSelect.value;
-                const stat = statSelect.value;
-                const currentData = playerData[season];
-                
-                const xData = currentData.map(p => p[stat]);
-                const yData = currentData.map(p => p.salary);
-                const textData = currentData.map(p => p.player);
-
+            // 4. Salary vs. Shot Distance Chart (with Toggle)
+            const toggleButtons = document.querySelectorAll('.toggle-btn');
+            
+            function updateSalaryVsDistanceChart(season) {
+                const seasonData = playerShotDistanceData[season];
                 const trace = {
-                    x: xData,
-                    y: yData,
-                    text: textData,
+                    x: seasonData.data.map(p => p.avgShotDistance),
+                    y: seasonData.data.map(p => p.salary),
+                    text: seasonData.data.map(p => p.player),
                     mode: 'markers+text',
                     type: 'scatter',
                     textposition: 'top center',
-                    marker: { size: 12, color: '#34d399' }
+                    marker: { size: 12, color: seasonData.color }
                 };
-                
-                const statName = stat.toUpperCase();
-                const valuationLayout = {
+
+                const yAxisTitle = season === '2004' 
+                    ? 'Salary (in Millions USD, adjusted for inflation)' 
+                    : 'Salary (in Millions USD)';
+
+                const layout = {
                     ...plotLayout,
-                    xaxis: { title: `${statName}` },
-                    yaxis: { title: 'Salary (in Millions USD)' },
+                    xaxis: { title: 'Average Shot Distance (ft)', range: [0, 25] },
+                    yaxis: { title: yAxisTitle, range: [0, 50] },
                     showlegend: false
                 };
 
-                Plotly.newPlot('valuationChart', [trace], valuationLayout, {responsive: true});
-                
-                const r2 = calculateCorrelation(currentData, stat, 'salary');
-                correlationValueEl.textContent = r2.toFixed(3);
+                Plotly.newPlot('salaryVsDistanceChart', [trace], layout, {responsive: true});
             }
 
-            seasonSelect.addEventListener('change', updateValuationChart);
-            statSelect.addEventListener('change', updateValuationChart);
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Update active class
+                    toggleButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    // Redraw chart
+                    const season = button.dataset.season;
+                    updateSalaryVsDistanceChart(season);
+                });
+            });
 
             // Initial chart render
-            updateValuationChart();
+            updateSalaryVsDistanceChart('2023');
         });
     </script>
 </body>
